@@ -9,18 +9,16 @@ dependencies = [
   "codecarbon",
   "memray",
   "pathos",
-
-
   "pytest==6.2.4",
   "coverage==4.5.4",
   "ruff",
   "mypy",
-
   "scikit-learn",
   "tqdm",
-  "numpy",
+  "numpy==1.26.4",
   "yahpo-gym",
-  "py_experimenter"
+  "py_experimenter",
+  "configspace==0.6.1",
 ]
 
 requires-python = ">=3.10"

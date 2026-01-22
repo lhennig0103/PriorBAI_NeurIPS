@@ -9,6 +9,8 @@ import numpy as np
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 
+from yahpo_gym import benchmark_set, local_config
+
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 
@@ -298,7 +300,7 @@ def run_experiment(config, result_processor, custom_config):
     delta = float(config['delta'])
 
 
-    ### TODO
+    ### TODO: Does this need to be configurable?
     prior_std = 0.01
 
     true_final_means: Dict[Any, float] = {}
@@ -319,7 +321,36 @@ def run_experiment(config, result_processor, custom_config):
             return mean_vals
         eval_fun = synthetic_learning_curve
     elif benchmark == 'lcbench':
-        pass
+        yahpogym_folder = "data/yahpogym/"
+        local_config.set_data_path(yahpogym_folder)
+        T_max = 52
+        benchmark = benchmark_set.BenchmarkSet("lcbench")
+        benchmark.set_instance(benchmark.instances[seed % len(benchmark.instances)])
+        configs = []
+
+        config_list = benchmark.get_opt_space().sample_configuration(size=num_arms)
+        for config in config_list:
+            config_dict = config.get_dictionary()
+            config_dict["epoch"] = T_max
+            configs.append((config_dict, benchmark.objective_function(config_dict)[0]["val_accuracy"]/100))
+        configs = sorted(configs, key=lambda c: c[1], reverse=True)
+        true_final_means = {arm: configs[arm][1] for arm in range(num_arms)}
+
+        class YahpoGymeEvaluator:
+            def __init__(self, benchmark, configs):
+                self.benchmark = benchmark
+                self.configs = configs
+
+            def evaluate(self, arm: int, t: np.ndarray) -> np.ndarray:
+                cfg = self.configs[arm][0]
+                res = []
+                for ti in t:
+                    print(ti)
+                    cfg["epoch"] = ti
+                    res += [self.benchmark.objective_function(cfg)[0]["val_accuracy"]/100]
+                return np.array(res)
+        eval = YahpoGymeEvaluator(benchmark, configs)
+        eval_fun = eval.evaluate
 
     arms = list(true_final_means.keys())
 
@@ -382,6 +413,7 @@ def run_experiment(config, result_processor, custom_config):
             "consumed_budget": budget_used,
             "remaining_arms": num_arms_left,
             "num_epsilon_optimal_arms": num_epsilon_optimal_arms,
+            "arm_id_selected": selected_best,
             "regret": regret,
             "epsilon_optimal": 1 if regret <= epsilon else 0,
             "best_arm": 1 if actual_best == selected_best else 0
@@ -396,4 +428,19 @@ if __name__ == "__main__":
     )
 
     # pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=100)
+    # pyexp.execute(run_experiment, max_experiments=100)
+
+    class MockupProcesor:
+        def process_results(self, data):
+            print(data)
+
+    run_experiment({
+        "seed": 0,
+        "benchmark": "lcbench",
+        "prior": "uniform",
+        "sigma0": 0.1,
+        "epsilon": 0.01,
+        "delta": 0.05,
+        "num_arms": 32,
+    }, MockupProcesor(), {})
+
