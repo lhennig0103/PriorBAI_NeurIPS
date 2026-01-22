@@ -1,0 +1,50 @@
+PY_EXPERIMENTER:
+  n_jobs: 1
+
+  Database:
+    provider: sqlite
+    database: priorbai
+
+    table:
+      name: priorbai_experiments
+
+      keyfields:
+        run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
+
+        num_arms: {type: INT, values: [32,64,128,256]}
+        benchmark: { type: VARCHAR(255), values: ["synthetic", "lcbench"]}
+        seed: {type: INT, values: {min: 0, max: 100, step: 1}}
+        prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
+        performance_prior_std: { type: DOUBLE, values: [0.01] }
+        sigma0: { type: DOUBLE, values: [0.1, 0.01, 0.001, 0.0001, 0.00001]}
+
+        epsilon: {type: DOUBLE, values: [0.01]}
+        delta: {type: DOUBLE, values: [0.05]}
+
+      resultfields:
+        T_max: INT
+        consumed_budget: DOUBLE
+        remaining_arms: INT
+        num_epsilon_optimal_arms: INT
+        regret: DOUBLE
+        epsilon_optimal: INT
+        best_arm: INT
+
+    logtables:
+      pipeline_steps:
+          step: INT
+          kind: VARCHAR(20)
+
+          weights_abs: BIGINT
+          weights_prunable: BIGINT
+          structs_abs: BIGINT
+          structs_prunable: BIGINT
+          weights_active_abs: BIGINT
+          structs_active_abs: BIGINT
+
+          t_infer_val: DOUBLE
+          Q_val: DOUBLE
+          t_infer_test: DOUBLE
+          Q_test: DOUBLE
+
+          meta: TEXT
