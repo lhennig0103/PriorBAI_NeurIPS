@@ -1,8 +1,9 @@
+print("halloo")
 import math
 import tqdm
 from typing import Callable, List, Dict, Any, Sequence
 
-from py_experimenter.experimenter import PyExperimenter
+from py_experimenter.experimenter import PyExperimenter, ResultProcessor
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Kernel, Hyperparameter, RBF
 import numpy as np
@@ -10,7 +11,7 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from yahpo_gym import benchmark_set, local_config
-
+print("halloo")
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 
@@ -284,11 +285,10 @@ def mf_prior_guided_successive_halving(
     else:
         return max(S_r, key=lambda a: mu_hat[a]), N_used, len(S_r)
 
-def run_experiment(config, result_processor, custom_config):
+def run_experiment(config, result_processor:ResultProcessor, custom_config):
     seed = int(config['seed'])
     # set seed
     np.random.seed(seed)
-
     benchmark = config['benchmark']
     num_arms = int(config['num_arms'])
 
@@ -423,12 +423,12 @@ def run_experiment(config, result_processor, custom_config):
 if __name__ == "__main__":
     pyexp = PyExperimenter(
         experiment_configuration_file_path="conf/experiment_config.yml",
-        # database_credential_file_path="conf/database_credentials.yml",
+        database_credential_file_path="conf/database_credentials.yml",
         use_codecarbon=False
     )
 
-    pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=1)
+    # pyexp.fill_table_from_config()
+    pyexp.execute(run_experiment, max_experiments=30, random_order=True)
 
     # class MockupProcesor:
     #     def process_results(self, data):

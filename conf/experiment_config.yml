@@ -2,8 +2,8 @@ PY_EXPERIMENTER:
   n_jobs: 1
 
   Database:
-    provider: sqlite
-    database: priorbai
+    provider: mysql
+    database: LeonaHennig_priorbai
 
     table:
       name: priorbai_experiments
@@ -16,7 +16,7 @@ PY_EXPERIMENTER:
         seed: {type: INT, values: {start: 0, stop: 30, step: 1}}
         prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
         performance_prior_std: { type: DOUBLE, values: [0.01] }
-        sigma0: { type: DOUBLE, values: [0.01, 0.001, 0,0001]}
+        sigma0: { type: DOUBLE, values: [0.01, 0.001, 0.0001]}
         epsilon: {type: DOUBLE, values: [0.01]}
         delta: {type: DOUBLE, values: [0.05]}
 
@@ -28,6 +28,7 @@ PY_EXPERIMENTER:
         regret: DOUBLE
         epsilon_optimal: INT
         best_arm: INT
+        arm_id_selected: INT
 
     logtables:
       sh_iterations:
