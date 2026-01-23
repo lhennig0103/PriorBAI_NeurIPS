@@ -1,9 +1,8 @@
-print("halloo")
 import math
 import tqdm
 from typing import Callable, List, Dict, Any, Sequence
 
-from py_experimenter.experimenter import PyExperimenter, ResultProcessor
+from py_experimenter.experimenter import PyExperimenter
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Kernel, Hyperparameter, RBF
 import numpy as np
@@ -11,7 +10,7 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 
 from yahpo_gym import benchmark_set, local_config
-print("halloo")
+
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 
@@ -101,6 +100,7 @@ def mf_prior_guided_successive_halving(
         sigma0_sq: float = 1.0,
         random_state: int | None = None,
         verbose: bool = False,
+        result_processor: Any | None = None
 ) -> tuple[Any, int, int]:
 
     arms = list(arms)
@@ -262,6 +262,17 @@ def mf_prior_guided_successive_halving(
             if verbose:
                 print("N_used", N_used, "but N_stop requires", N_stop)
 
+            if result_processor is not None:
+                result_processor.process_logs({
+                    "sh_iterations": {
+                        "iteration": r,
+                        "num_arms": len(S_r),
+                        "best_arm_included": 1 if 0 in S_r else 0,
+                        "budget_spent_so_far": N_used,
+                        "N_stop": N_stop
+                    }
+                })
+
             if N_used >= N_stop:
                 if verbose:
                     print("Stopping condition reached; return i_hat; current round was ", r, " out of ", R)
@@ -285,10 +296,11 @@ def mf_prior_guided_successive_halving(
     else:
         return max(S_r, key=lambda a: mu_hat[a]), N_used, len(S_r)
 
-def run_experiment(config, result_processor:ResultProcessor, custom_config):
+def run_experiment(config, result_processor, custom_config):
     seed = int(config['seed'])
     # set seed
     np.random.seed(seed)
+
     benchmark = config['benchmark']
     num_arms = int(config['num_arms'])
 
@@ -395,6 +407,7 @@ def run_experiment(config, result_processor:ResultProcessor, custom_config):
         epsilon=epsilon,
         sigma0_sq=sigma0_sq,
         verbose=False,
+        result_processor=result_processor
     )
     actual_best = max(true_final_means, key=true_final_means.get)
 
@@ -423,12 +436,12 @@ def run_experiment(config, result_processor:ResultProcessor, custom_config):
 if __name__ == "__main__":
     pyexp = PyExperimenter(
         experiment_configuration_file_path="conf/experiment_config.yml",
-        database_credential_file_path="conf/database_credentials.yml",
+        # database_credential_file_path="conf/database_credentials.yml",
         use_codecarbon=False
     )
 
-    # pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=30, random_order=True)
+    pyexp.fill_table_from_config()
+    pyexp.execute(run_experiment, max_experiments=1)
 
     # class MockupProcesor:
     #     def process_results(self, data):

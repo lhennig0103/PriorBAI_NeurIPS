@@ -25,6 +25,7 @@ PY_EXPERIMENTER:
         consumed_budget: DOUBLE
         remaining_arms: INT
         num_epsilon_optimal_arms: INT
+        arm_id_selected: INT
         regret: DOUBLE
         epsilon_optimal: INT
         best_arm: INT
@@ -36,4 +37,5 @@ PY_EXPERIMENTER:
           num_arms: VARCHAR(20)
           best_arm_included: INT
           budget_spent_so_far: DOUBLE
+          N_stop: DOUBLE
 
