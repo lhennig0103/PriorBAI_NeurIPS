@@ -358,7 +358,7 @@ def run_experiment(config, result_processor, custom_config):
                 res = []
                 for ti in t:
                     print(ti)
-                    cfg["epoch"] = ti
+                    cfg["epoch"] = int(ti)
                     res += [self.benchmark.objective_function(cfg)[0]["val_accuracy"]/100]
                 return np.array(res)
         eval = YahpoGymeEvaluator(benchmark, configs)
@@ -436,12 +436,12 @@ def run_experiment(config, result_processor, custom_config):
 if __name__ == "__main__":
     pyexp = PyExperimenter(
         experiment_configuration_file_path="conf/experiment_config.yml",
-        # database_credential_file_path="conf/database_credentials.yml",
+        database_credential_file_path="conf/database_credentials.yml",
         use_codecarbon=False
     )
 
-    pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=1)
+    #pyexp.fill_table_from_config()
+    pyexp.execute(run_experiment, max_experiments=40, random_order=True)
 
     # class MockupProcesor:
     #     def process_results(self, data):
@@ -456,4 +456,3 @@ if __name__ == "__main__":
     #     "delta": 0.05,
     #     "num_arms": 32,
     # }, MockupProcesor(), {})
-
