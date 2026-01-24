@@ -3,7 +3,7 @@ PY_EXPERIMENTER:
 
   Database:
     provider: mysql
-    database: LeonaHennig_priorbai
+    database: priorbai
 
     table:
       name: priorbai_experiments
@@ -11,9 +11,9 @@ PY_EXPERIMENTER:
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
 
-        num_arms: {type: INT, values: [32,64,128]}
-        benchmark: { type: VARCHAR(255), values: ["syntheic","lcbench"]}
-        seed: {type: INT, values: {start: 0, stop: 30, step: 1}}
+        num_arms: {type: INT, values: [32,64,128,256]}
+        benchmark: { type: VARCHAR(255), values: ["synthetic", "lcbench"]}
+        seed: {type: INT, values: {start: 0, stop: 100, step: 1}}
         prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
         performance_prior_std: { type: DOUBLE, values: [0.01] }
         sigma0: { type: DOUBLE, values: [0.01, 0.001, 0.0001]}

@@ -297,6 +297,7 @@ def mf_prior_guided_successive_halving(
         return max(S_r, key=lambda a: mu_hat[a]), N_used, len(S_r)
 
 def run_experiment(config, result_processor, custom_config):
+    print(config)
     seed = int(config['seed'])
     # set seed
     np.random.seed(seed)
@@ -337,7 +338,9 @@ def run_experiment(config, result_processor, custom_config):
         local_config.set_data_path(yahpogym_folder)
         T_max = 52
         benchmark = benchmark_set.BenchmarkSet("lcbench")
-        benchmark.set_instance(benchmark.instances[seed % len(benchmark.instances)])
+
+        instance_idx = seed % len(benchmark.instances)
+        benchmark.set_instance(benchmark.instances[instance_idx])
         configs = []
 
         config_list = benchmark.get_opt_space().sample_configuration(size=num_arms)
@@ -349,23 +352,26 @@ def run_experiment(config, result_processor, custom_config):
         true_final_means = {arm: configs[arm][1] for arm in range(num_arms)}
 
         class YahpoGymeEvaluator:
-            def __init__(self, benchmark, configs):
+            def __init__(self, benchmark, configs, T_max):
                 self.benchmark = benchmark
                 self.configs = configs
+                self.T_max = T_max
 
             def evaluate(self, arm: int, t: np.ndarray) -> np.ndarray:
                 cfg = self.configs[arm][0]
                 res = []
                 for ti in t:
-                    print(ti)
-                    cfg["epoch"] = int(ti)
+                    cfg["epoch"] = min(int(ti), self.T_max)
                     res += [self.benchmark.objective_function(cfg)[0]["val_accuracy"]/100]
                 return np.array(res)
-        eval = YahpoGymeEvaluator(benchmark, configs)
+        eval = YahpoGymeEvaluator(benchmark, configs, T_max)
         eval_fun = eval.evaluate
+    else:
+        raise ValueError("Unknown benchmark")
 
     arms = list(true_final_means.keys())
 
+    print("True final means list", list(true_final_means.values()))
     prior_means = {}
     max_true_mean = np.array(list(true_final_means.values())).max()
     if prior == "uniform":
@@ -440,8 +446,8 @@ if __name__ == "__main__":
         use_codecarbon=False
     )
 
-    #pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=40, random_order=True)
+    # pyexp.fill_table_from_config()
+    pyexp.execute(run_experiment, max_experiments=-1, random_order=True)
 
     # class MockupProcesor:
     #     def process_results(self, data):
