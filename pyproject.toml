@@ -20,7 +20,6 @@ dependencies = [
   "py_experimenter",
   "configspace==0.6.1",
   "ipykernel>=6.29.5",
-  "deepcave>=1.2.1",
 ]
 
 requires-python = ">=3.10"
