@@ -3,3 +3,4 @@ conf/database_credentials.yml
 conf/certificates
 *.csv
 .vscode/settings.json
+priorbai/.DS_Store
