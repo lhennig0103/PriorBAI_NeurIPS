@@ -1,14 +1,15 @@
+from __future__ import annotations
+
 import math
-import tqdm
-from typing import Callable, List, Dict, Any, Sequence
-
-from py_experimenter.experimenter import PyExperimenter
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Kernel, Hyperparameter, RBF
-import numpy as np
 import warnings
-from sklearn.exceptions import ConvergenceWarning
+from typing import Any, Callable, Dict, List, Sequence
 
+import numpy as np
+import tqdm
+from py_experimenter.experimenter import PyExperimenter
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, Hyperparameter, Kernel
 from yahpo_gym import benchmark_set, local_config
 
 warnings.filterwarnings('ignore', category=ConvergenceWarning)
