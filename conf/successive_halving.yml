@@ -6,21 +6,21 @@ PY_EXPERIMENTER:
     database: priorbai
 
     table:
-      name: sensitivity_study
+      name: successive_halving
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
         num_arms: {type: INT, values: [256]}
         benchmark: { type: VARCHAR(255), values: ["lcbench"]}
         kernel: { type: VARCHAR(255), values: ["linear"]}
-        use_predicted_y: { type: INT, values: [0,1]}
-        use_early_stopping: { type: INT, values: [1]}
+        use_predicted_y: { type: INT, values: [0]}
+        use_early_stopping: { type: INT, values: [0]}
         seed: {type: INT, values: {start: 0, stop: 100, step: 1}}
-        prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
+        prior: { type: VARCHAR(255), values: [Null]}
         performance_prior_std: { type: DOUBLE, values: [0.01] }
-        sigma0: { type: DOUBLE, values: [0.01, 0.001, 0.0001]}
-        epsilon: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
-        delta: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
+        sigma0: { type: DOUBLE, values: [0.1]}
+        epsilon: {type: DOUBLE, values: [0.1]}
+        delta: {type: DOUBLE, values: [0.1]}
 
       resultfields:
         T_max: INT

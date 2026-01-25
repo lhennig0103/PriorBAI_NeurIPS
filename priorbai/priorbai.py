@@ -313,6 +313,8 @@ def run_experiment(config, result_processor, custom_config):
     seed = int(config['seed'])
     # set seed
     rng = np.random.default_rng(seed)
+    # set numpy seed
+    np.random.seed(seed)
     # make this numpy.random.mtrand.RandomState
 
     benchmark = config['benchmark']
@@ -363,7 +365,7 @@ def run_experiment(config, result_processor, custom_config):
         benchmark.set_instance(benchmark.instances[instance_idx])
         configs = []
 
-        config_list = benchmark.get_opt_space().sample_configuration(size=num_arms)
+        config_list = benchmark.get_opt_space(seed=seed).sample_configuration(size=num_arms)
         for config in config_list:
             config_dict = config.get_dictionary()
             config_dict["epoch"] = T_max
@@ -484,10 +486,10 @@ def run_experiment(config, result_processor, custom_config):
 
 if __name__ == "__main__":
     pyexp = PyExperimenter(
-        experiment_configuration_file_path="conf/experiment_config.yml",
+        experiment_configuration_file_path="conf/successive_halving.yml",
         database_credential_file_path="conf/database_credentials.yml",
         use_codecarbon=False
     )
-    #pyexp.reset_experiments("running", "error")
     #pyexp.fill_table_from_config()
+    #pyexp.reset_experiments("running", "error")
     pyexp.execute(run_experiment, max_experiments=1, random_order=True)
