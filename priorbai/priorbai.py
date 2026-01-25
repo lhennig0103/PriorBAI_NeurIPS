@@ -4,7 +4,7 @@ from typing import Callable, List, Dict, Any, Sequence
 
 from py_experimenter.experimenter import PyExperimenter
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Kernel, Hyperparameter, RBF
+from sklearn.gaussian_process.kernels import Kernel, Hyperparameter, RBF, Matern
 import numpy as np
 import warnings
 from sklearn.exceptions import ConvergenceWarning
@@ -94,13 +94,15 @@ def mf_prior_guided_successive_halving(
         prior_means: Dict[Any, float],
         T_max: int,
         observe_fn: Callable[[Any, np.ndarray], np.ndarray],
-        kernel: Kernel | None = None,
-        delta: float = 0.1,
-        epsilon: float = 0.01,
-        sigma0_sq: float = 1.0,
-        random_state: int | None = None,
-        verbose: bool = False,
-        result_processor: Any | None = None
+        kernel: Kernel | None,
+        use_predicted_y: bool,
+        delta: float,
+        epsilon: float,
+        sigma0_sq: float,
+        rng: np.random.Generator,
+        seed: int,
+        verbose: bool,
+        result_processor: Any | None
 ) -> tuple[Any, int, int]:
 
     arms = list(arms)
@@ -126,8 +128,6 @@ def mf_prior_guided_successive_halving(
     arm_ts: Dict[Any, List[int]] = {arm: [] for arm in arms}
     arm_ys: Dict[Any, List[float]] = {arm: [] for arm in arms}
 
-    rng = np.random.RandomState(random_state)
-
     if verbose:
         print("Precompute constant in stopping condition")
     C_log = math.log(2.0 * math.log2(K)*(K/2 - 1) / delta)
@@ -150,6 +150,7 @@ def mf_prior_guided_successive_halving(
         N_used += len(S_r) * (n_r - n_prev)
 
         # 1. Observation & Extrapolation
+        round_y: Dict[Any, float] = {}
         round_mu_hat: Dict[Any, float] = {}
         round_sigma_sq: Dict[Any, float] = {}
         # print("Number of arms", len(S_r))
@@ -185,7 +186,7 @@ def mf_prior_guided_successive_halving(
                     kernel=kernel,
                     alpha=0.05**2,
                     normalize_y=False,
-                    random_state=rng,
+                    random_state=seed,
                 )
                 gp.fit(X, y)
 
@@ -201,6 +202,7 @@ def mf_prior_guided_successive_halving(
                     print(gp.predict(X).tolist())
                     print(arm, n_r, "\t\t", mu_j_r, sigma_j_r_sq, "Actual value", arm_ys[arm][-1])
 
+            round_y[arm] = arm_ys[arm][-1]
             round_mu_hat[arm] = mu_j_r
             round_sigma_sq[arm] = sigma_j_r_sq
 
@@ -279,8 +281,12 @@ def mf_prior_guided_successive_halving(
                 return i_hat, N_used, len(S_r)
 
         # 4. Pruning
-        # Keep top ceil(|S_r| / 2) arms by predicted means
-        S_r_sorted = sorted(S_r, key=lambda a: round_mu_hat[a], reverse=True)
+        if use_predicted_y:
+            # Keep top ceil(|S_r| / 2) arms by predicted means
+            S_r_sorted = sorted(S_r, key=lambda a: round_mu_hat[a], reverse=True)
+        else:
+            # sort by actual observed performance
+            S_r_sorted = sorted(S_r, key=lambda a: round_y[a], reverse=True)
         # print("S_r_sorted", S_r_sorted)
         keep = math.ceil(len(S_r_sorted) / 2.0)
         # print(keep)
@@ -300,7 +306,8 @@ def run_experiment(config, result_processor, custom_config):
     print(config)
     seed = int(config['seed'])
     # set seed
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
+    # make this numpy.random.mtrand.RandomState
 
     benchmark = config['benchmark']
     num_arms = int(config['num_arms'])
@@ -312,6 +319,11 @@ def run_experiment(config, result_processor, custom_config):
     epsilon = float(config['epsilon'])
     delta = float(config['delta'])
 
+    if "kernel" in config:
+        kernel_name = config["kernel"]
+    else:
+        kernel_name = "satexp_rbf"
+    use_predicted_y = bool(config["use_predicted_y"])
 
     ### TODO: Does this need to be configurable?
     prior_std = 0.01
@@ -320,7 +332,7 @@ def run_experiment(config, result_processor, custom_config):
 
     if benchmark == 'synthetic':
         T_max = num_arms
-        final_means = sorted([np.random.rand() for arm in range(num_arms)], reverse=True)
+        final_means = sorted([rng.random() for arm in range(num_arms)], reverse=True)
         true_final_means = {arm: final_means[arm] for arm in range(num_arms)}
         def synthetic_learning_curve(arm: int, t: np.ndarray) -> np.ndarray:
             """
@@ -384,7 +396,7 @@ def run_experiment(config, result_processor, custom_config):
     elif prior == "performance":
         # prior mean sampled from a normal distribution around the actual mean
         for arm in arms:
-            prior_means[arm] = min(1.0, np.random.normal(true_final_means[arm], prior_std))
+            prior_means[arm] = min(1.0, rng.normal(true_final_means[arm], prior_std))
     elif prior == "inverse_rank":
         # prior is the inverse of the true mean's rank
         for arm in arms:
@@ -398,9 +410,21 @@ def run_experiment(config, result_processor, custom_config):
 
     # create an IPL kernel
     # ipl_kernel = InversePowerLawKernel(length_scale=2)
-    sat_kernel = SaturatingExpKernel(tau=0.3, sigma_sq=1.0)
-    smooth_kernel = RBF(length_scale=0.2)
-    lc_kernel = sat_kernel + smooth_kernel
+
+    if kernel_name == "rbf":
+        lc_kernel = RBF()
+    elif kernel_name == "matern32":
+        lc_kernel = Matern(nu=1.5)
+    elif kernel_name == "matern52":
+        lc_kernel = Matern(nu=2.5)
+    elif kernel_name == "linear":
+        lc_kernel = None  # equivalent to linear kernel in sklearn GP
+    elif kernel_name == "satexp_rbf":
+        sat_kernel = SaturatingExpKernel(tau=0.3, sigma_sq=1.0)
+        smooth_kernel = RBF(length_scale=0.2)
+        lc_kernel = sat_kernel + smooth_kernel
+    else:
+        raise ValueError("Unknown kernel type")
 
     selected_best, budget_used, num_arms_left = mf_prior_guided_successive_halving(
         arms=arms,
@@ -408,10 +432,13 @@ def run_experiment(config, result_processor, custom_config):
         prior_means=prior_means,
         T_max=T_max,
         observe_fn=eval_fun,
-        kernel=lc_kernel,      # <-- use IPL here
+        kernel=lc_kernel,
+        use_predicted_y=use_predicted_y,
         delta=delta,
         epsilon=epsilon,
         sigma0_sq=sigma0_sq,
+        rng=rng,
+        seed=seed,
         verbose=False,
         result_processor=result_processor
     )
@@ -446,8 +473,8 @@ if __name__ == "__main__":
         use_codecarbon=False
     )
 
-    # pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=-1, random_order=True)
+    #pyexp.fill_table_from_config()
+    # pyexp.execute(run_experiment, max_experiments=1, random_order=True)
 
     # class MockupProcesor:
     #     def process_results(self, data):
