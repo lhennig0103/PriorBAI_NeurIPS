@@ -281,7 +281,7 @@ def mf_prior_guided_successive_halving(
                     }
                 })
             if use_early_stopping:
-                if N_used >= N_stop: #TODO if we want to do plain sf deactivate this
+                if N_used >= N_stop:
                     if verbose:
                         print("Stopping condition reached; return i_hat; current round was ", r, " out of ", R)
                     return i_hat, N_used, len(S_r)
