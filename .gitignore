@@ -4,3 +4,4 @@ conf/certificates
 *.csv
 .vscode/settings.json
 priorbai/.DS_Store
+*/__pycache__/*
