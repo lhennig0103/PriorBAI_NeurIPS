@@ -24,7 +24,7 @@ dependencies = [
   "seaborn>=0.13.2",
 ]
 
-requires-python = ">=3.10"
+requires-python = "==3.10.*"
 authors = [{ name = "AutoML Hannover", email =  "m.wever@ai.uni-hannover.de" }]
 readme = "README.md"
 description = "PriorBAI"
@@ -47,7 +47,6 @@ tooling = ["commitizen", "pre-commit", "ruff"]
 
 test = ["pytest", "pytest-coverage", "pytest-cases", "PriorBAI[examples]"]
 examples = []
-
 
 # https://docs.pytest.org/en/7.2.x/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]

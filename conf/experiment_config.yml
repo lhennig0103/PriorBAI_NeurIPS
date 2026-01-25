@@ -6,20 +6,20 @@ PY_EXPERIMENTER:
     database: priorbai
 
     table:
-      name: lukas_test
+      name: albations
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
-        num_arms: {type: INT, values: [32,64,128,256]}
+        num_arms: {type: INT, values: [256]}
         benchmark: { type: VARCHAR(255), values: ["lcbench"]}
-        kernel: { type: VARCHAR(255), values: ["rbf", "matern32", "matern52", "linear"]}
+        kernel: { type: VARCHAR(255), values: ["linear"]}
         use_predicted_y: { type: INT, values: [0,1]}
         seed: {type: INT, values: {start: 0, stop: 100, step: 1}}
         prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
         performance_prior_std: { type: DOUBLE, values: [0.01] }
         sigma0: { type: DOUBLE, values: [0.01, 0.001, 0.0001]}
-        epsilon: {type: DOUBLE, values: [0.01]}
-        delta: {type: DOUBLE, values: [0.05]}
+        epsilon: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
+        delta: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
 
       resultfields:
         T_max: INT

@@ -352,7 +352,8 @@ def run_experiment(config, result_processor, custom_config):
         eval_fun = synthetic_learning_curve
     elif benchmark == 'lcbench':
         yahpogym_folder = "data/yahpogym/"
-        local_config.set_data_path(yahpogym_folder)
+        # Fix from https://github.com/automl/CARP-S/blob/18a2779e04dccd88e602e241e5851479dcf6b351/carps/objective_functions/yahpo.py#L120
+        local_config._config = {"data_path": str(yahpogym_folder)}
         T_max = 52
         benchmark = benchmark_set.BenchmarkSet("lcbench")
 
@@ -477,20 +478,6 @@ if __name__ == "__main__":
         database_credential_file_path="conf/database_credentials.yml",
         use_codecarbon=False
     )
-
+    #pyexp.reset_experiments("running", "error")
     #pyexp.fill_table_from_config()
-    # pyexp.execute(run_experiment, max_experiments=1, random_order=True)
-
-    # class MockupProcesor:
-    #     def process_results(self, data):
-    #         print(data)
-    #
-    # run_experiment({
-    #     "seed": 0,
-    #     "benchmark": "lcbench",
-    #     "prior": "uniform",
-    #     "sigma0": 0.1,
-    #     "epsilon": 0.01,
-    #     "delta": 0.05,
-    #     "num_arms": 32,
-    # }, MockupProcesor(), {})
+    pyexp.execute(run_experiment, max_experiments=160, random_order=True)
