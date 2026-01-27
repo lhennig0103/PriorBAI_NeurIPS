@@ -6,12 +6,12 @@ PY_EXPERIMENTER:
     database: priorbai
 
     table:
-      name: sensitivity_study
+      name: all_results
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
-        num_arms: {type: INT, values: [256]}
-        benchmark: { type: VARCHAR(255), values: ["lcbench"]}
+        num_arms: {type: INT, values: [32, 64, 128, 256]}
+        benchmark: { type: VARCHAR(255), values: ["lcbench"] }
         kernel: { type: VARCHAR(255), values: ["linear"]}
         use_predicted_y: { type: INT, values: [0,1]}
         use_early_stopping: { type: INT, values: [1]}
@@ -19,8 +19,8 @@ PY_EXPERIMENTER:
         prior: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"]}
         performance_prior_std: { type: DOUBLE, values: [0.01] }
         sigma0: { type: DOUBLE, values: [0.01, 0.001, 0.0001]}
-        epsilon: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
-        delta: {type: DOUBLE, values: [0.01, 0.05, 0.1, 0.2]}
+        epsilon: {type: DOUBLE, values: [0.01]}
+        delta: {type: DOUBLE, values: [0.01,]}
 
       resultfields:
         T_max: INT

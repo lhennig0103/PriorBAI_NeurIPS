@@ -10,7 +10,7 @@ PY_EXPERIMENTER:
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
-        num_arms: {type: INT, values: [256]}
+        num_arms: {type: INT, values: [32, 64, 128, 256, 512, 1024]}
         benchmark: { type: VARCHAR(255), values: ["lcbench"]}
         kernel: { type: VARCHAR(255), values: ["linear"]}
         use_predicted_y: { type: INT, values: [0]}
