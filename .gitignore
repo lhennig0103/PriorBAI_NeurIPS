@@ -5,3 +5,4 @@ conf/certificates
 .vscode/settings.json
 priorbai/.DS_Store
 */__pycache__/*
+plots/*.pdf
