@@ -10,6 +10,7 @@ PY_EXPERIMENTER:
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
+        optimizer: { type: VARCHAR(64), values: ["successive_halving", "hyperband"] }
         num_arms: {type: INT, values: [32, 64, 128, 256]}
         benchmark: { type: VARCHAR(255), values: ["lcbench"] }
         kernel: { type: VARCHAR(255), values: ["linear"]}

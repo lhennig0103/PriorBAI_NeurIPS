@@ -18,7 +18,7 @@ from priorbai.priors import get_prior_means
 logger = logging.getLogger(__name__)
 
 
-def mf_prior_guided_successive_halving(
+def prior_guided_successive_halving(
         arms: Sequence[Any],
         budget_N: int,
         prior_means: Dict[Any, float],
@@ -196,6 +196,89 @@ def mf_prior_guided_successive_halving(
     return max(active_arms, key=lambda a: mu_hat[a]), budget_consumed, len(active_arms)
 
 
+def prior_guided_hyperband(
+        arms: Sequence[Any],
+        eta: int,
+        prior_means: Dict[Any, float],
+        T_max: int,
+        observe_fn: Callable[[Any, np.ndarray], np.ndarray],
+        kernel: Kernel | None,
+        use_predicted_y: bool,
+        use_early_stopping: bool,
+        delta: float,
+        epsilon: float,
+        sigma0_sq: float,
+        rng: np.random.Generator,
+        seed: int,
+        result_processor: Any | None,
+) -> tuple[Any, int, int]:
+    """Hyperband wrapper around prior_guided_successive_halving.
+
+    Runs s_max + 1 brackets (s_max = floor(log_eta(n))).  Bracket s starts
+    with n_s = max(1, ceil(n / eta^(s_max - s))) arms — bracket s_max uses
+    all arms (most exploration), bracket 0 uses ~1 arm (most exploitation).
+    Each bracket is given budget_N = n * T_max so it can run a full SHA.
+    The winner of each bracket is evaluated at T_max; the arm with the
+    highest final observed value is returned.
+    """
+    arms = list(arms)
+    n = len(arms)
+    if n < 1:
+        raise ValueError("At least one arm is required.")
+
+    # Paper formula: s_max = floor(log_eta(R)) where R = T_max (max budget per arm).
+    # Each bracket gets budget B = (s_max + 1) * T_max.
+    s_max = math.floor(math.log(T_max, eta)) if T_max > 1 else 0
+    B = (s_max + 1) * T_max  # equal budget envelope for every bracket
+
+    total_budget = 0
+    bracket_results: List[tuple[Any, float]] = []
+
+    for s in range(s_max, -1, -1):
+        # Paper: n_s = ceil(B/R * eta^s / (s+1)) = ceil((s_max+1) * eta^s / (s+1))
+        # s = s_max → most arms (broadest exploration)
+        # s = 0     → fewest arms (deepest exploitation, ~s_max+1 arms at full budget)
+        n_s = min(n, max(1, math.ceil((s_max + 1) * eta ** s / (s + 1))))
+
+        if n_s >= n:
+            bracket_arms = arms.copy()
+        else:
+            indices = rng.choice(n, size=n_s, replace=False)
+            bracket_arms = [arms[int(i)] for i in sorted(indices)]
+
+        logger.debug(
+            "Hyperband bracket s=%d/%d: n_s=%d arms, r_s=%.1f, B=%d",
+            s, s_max, n_s, T_max / eta ** s, B,
+        )
+
+        winner, budget_used, _ = prior_guided_successive_halving(
+            arms=bracket_arms,
+            budget_N=B,
+            prior_means=prior_means,
+            T_max=T_max,
+            observe_fn=observe_fn,
+            kernel=kernel,
+            use_predicted_y=use_predicted_y,
+            use_early_stopping=use_early_stopping,
+            delta=delta,
+            epsilon=epsilon,
+            sigma0_sq=sigma0_sq,
+            rng=rng,
+            seed=seed,
+            result_processor=result_processor,
+        )
+        total_budget += budget_used
+
+        # Evaluate bracket winner at T_max for cross-bracket comparison.
+        final_y = float(observe_fn(winner, np.array([T_max], dtype=int))[-1])
+        total_budget += 1
+        bracket_results.append((winner, final_y))
+        logger.debug("Bracket s=%d winner=%s  final_y=%.4f", s, winner, final_y)
+
+    best_arm, _ = max(bracket_results, key=lambda x: x[1])
+    return best_arm, total_budget, 1
+
+
 def setup_run(config, rng):
     benchmark_name = config["benchmark"]
     num_arms = int(config["num_arms"])
@@ -229,13 +312,13 @@ def run_experiment(config, result_processor, custom_config):
     use_predicted_y = bool(config["use_predicted_y"])
     use_early_stopping = bool(config.get("use_early_stopping", False))
 
+    optimizer = config["optimizer"]
+
     benchmark, arms, prior_means, learning_curve_kernel = setup_run(config, rng)
     T_max = benchmark.get_t_max()
     true_final_means = benchmark.get_true_final_means()
 
-    selected_best, budget_used, num_arms_left = mf_prior_guided_successive_halving(
-        arms=arms,
-        budget_N=len(arms) * np.log2(len(arms)),
+    shared_kwargs = dict(
         prior_means=prior_means,
         T_max=T_max,
         observe_fn=benchmark.evaluate,
@@ -249,6 +332,21 @@ def run_experiment(config, result_processor, custom_config):
         seed=seed,
         result_processor=result_processor,
     )
+
+    if optimizer == "hyperband":
+        selected_best, budget_used, num_arms_left = prior_guided_hyperband(
+            arms=arms,
+            eta=2,
+            **shared_kwargs,
+        )
+    elif optimizer == "successive_halving":
+        selected_best, budget_used, num_arms_left = prior_guided_successive_halving(
+            arms=arms,
+            budget_N=len(arms) * np.log2(len(arms)),
+            **shared_kwargs,
+        )
+    else:
+        raise ValueError(f"Unknown optimizer: {optimizer!r}. Choose 'successive_halving' or 'hyperband'.")
 
     actual_best = max(true_final_means, key=true_final_means.get)
     max_true_mean = max(true_final_means.values())
