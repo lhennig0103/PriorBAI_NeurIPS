@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from typing import Any
 
 import numpy as np
 import ConfigSpace
@@ -26,6 +27,11 @@ class Benchmark(ABC):
         ...
 
     @abstractmethod
+    def get_config(self, arm: int) -> Any:
+        """Return the configuration dict (or identifier) associated with arm."""
+        ...
+
+    @abstractmethod
     def evaluate(self, arm: int, fidelity_levels: np.ndarray) -> np.ndarray:
         """Evaluate the configuration associated with arm at the given fidelities."""
         ...
@@ -44,6 +50,9 @@ class SyntheticBenchmark(Benchmark):
         final_means = sorted([self.rng.random() for _ in range(num_arms)], reverse=True)
         self.true_final_means = {arm: final_means[arm] for arm in range(num_arms)}
         return list(range(num_arms)), self.true_final_means
+
+    def get_config(self, arm: int) -> int:
+        return arm
 
     def evaluate(self, arm: int, fidelity_levels: np.ndarray) -> np.ndarray:
         true_mu = self.true_final_means[arm]
@@ -104,7 +113,12 @@ class LCBenchBenchmark(Benchmark):
         return self.MAX_FIDELITY
 
     def sample(self, num_arms: int, seed: int, **kwargs) -> tuple[list[int], dict[int, float]]:
+        if num_arms == 0:
+            self.configs = []
+            return [], {}
         cfg_list = self.configuration_space.sample_configuration(size=num_arms)
+        if not isinstance(cfg_list, list):
+            cfg_list = [cfg_list]
         configs: list[tuple[dict, float]] = []
         for cfg in cfg_list:
             cfg_dict = cfg.get_dictionary()
@@ -131,39 +145,41 @@ class LCBenchBenchmark(Benchmark):
         
         def add_incumbent_sampling(chance_of_prior_configurations: float) -> tuple[float, float]:
             def how_likely_according_to_incumbent(config: dict, incumbent: dict) -> float:
-                "We build a normal distribution around the incumbent with standard deviation 0.25"
-                "We then calculate how likely a configuration is according to this distribution. "
-                "This is the probability of sampling this configuration according to the incumbent."
                 sigma = 0.25
                 density = 1.0
-                for hp_name, hp_value in config.items():
-                    if hp_name == "epoch":
+                for hp in self.configuration_space.get_hyperparameters():
+                    if hp.name in ("epoch", "OpenML_task_id"):
                         continue
-                    density *= np.exp(-0.5 * ((hp_value - incumbent[hp_name]) / sigma) ** 2)
+                    hp_range = hp.upper - hp.lower
+                    normalized_value = (config[hp.name] - hp.lower) / hp_range
+                    normalized_incumbent = (incumbent[hp.name] - hp.lower) / hp_range
+                    density *= np.exp(-0.5 * ((normalized_value - normalized_incumbent) / sigma) ** 2)
                 return density
             
             def how_likely_according_to_prior(config: dict) -> float:
                 density = 1.0
-                for hp_name, hp_value in config.items():
-                    if hp_name == "epoch":
-                        continue
-                    mu, sigma = self.prior_distribution[hp_name]
-                    density *= np.exp(-0.5 * ((hp_value - mu) / sigma) ** 2)
+                for hp_name, (mu, sigma) in self.prior_distribution.items():
+                    hp = self.configuration_space.get_hyperparameter(hp_name)
+                    hp_range = hp.upper - hp.lower
+                    normalized_value = (config[hp_name] - hp.lower) / hp_range
+                    normalized_mu = (mu - hp.lower) / hp_range
+                    normalized_sigma = sigma / hp_range
+                    density *= np.exp(-0.5 * ((normalized_value - normalized_mu) / normalized_sigma) ** 2)
                 return density
 
             priorband_relevant_configurations = runhistory.get_priorband_relevant_configurations()
-            incumbent_configuraiton = priorband_relevant_configurations[0][0]
+            incumbent_configuration = priorband_relevant_configurations[0][0]
 
             incumbent_scores = 0
             prior_scores = 0
             for index, (config, _) in enumerate(priorband_relevant_configurations):
                 weight = len(priorband_relevant_configurations) + 1 - index
-                incumbent_scores += weight * how_likely_according_to_incumbent(config, incumbent_configuraiton)
+                incumbent_scores += weight * how_likely_according_to_incumbent(config, incumbent_configuration)
                 prior_scores += weight * how_likely_according_to_prior(config)
 
-            cahnge_of_incumbent_configurations = chance_of_prior_configurations * (incumbent_scores / (incumbent_scores + prior_scores))
+            chance_of_incumbent_configurations = chance_of_prior_configurations * (incumbent_scores / (incumbent_scores + prior_scores))
             chance_of_prior_configurations = chance_of_prior_configurations * (prior_scores / (incumbent_scores + prior_scores))
-            return chance_of_prior_configurations, cahnge_of_incumbent_configurations
+            return chance_of_prior_configurations, chance_of_incumbent_configurations
 
         def incumbent_sampling(incumbent: dict, n_configurations: int) -> tuple[list[dict], list[int], dict[int, float]]:
             configs = []
@@ -171,6 +187,8 @@ class LCBenchBenchmark(Benchmark):
             for i in range(n_configurations):
                 perturbed = dict(incumbent)
                 for hp in self.configuration_space.get_hyperparameters():
+                    if hp.name in ("epoch", "OpenML_task_id"):
+                        continue
                     if rng.random() >= 0.5:
                         continue
 
@@ -196,9 +214,14 @@ class LCBenchBenchmark(Benchmark):
             return configs, list(range(n_configurations)), true_final_means
 
         def prior_sampling(n_configurations: int) -> tuple[list[dict], list[int], dict[int, float]]:
+            if n_configurations == 0:
+                return [], [], {}
             configs = []
             true_final_means = {}
-            for i, cfg in enumerate(self.prior_configspace.sample_configuration(size=n_configurations)):
+            samples = self.prior_configspace.sample_configuration(size=n_configurations)
+            if not isinstance(samples, list):
+                samples = [samples]
+            for i, cfg in enumerate(samples):
                 cfg_dict = cfg.get_dictionary()
                 cfg_dict["epoch"] = self.MAX_FIDELITY
                 acc = self.benchmarkset.objective_function(cfg_dict)[0]["val_accuracy"] / 100
@@ -248,6 +271,9 @@ class LCBenchBenchmark(Benchmark):
         all_arms = list(range(len(self.configs)))
         return all_arms, all_means
     
+
+    def get_config(self, arm: int) -> dict:
+        return self.configs[arm]
 
     def evaluate(self, arm: int, fidelity_levels: np.ndarray) -> np.ndarray:
         cfg = dict(self.configs[arm])

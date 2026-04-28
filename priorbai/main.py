@@ -121,6 +121,9 @@ def prior_guided_successive_halving(
 
         logger.debug("round_sigma_sq=%s  Sigma=%.6f", round_sigma_sq, Sigma)
 
+        for arm in active_arms:
+            runhistory.add(round_budget, benchmark.get_config(arm), round_y[arm])
+
         previous_round_budget = round_budget
         mu_hat.update(round_mu_hat)
 
@@ -316,7 +319,8 @@ def run_experiment(config, result_processor, custom_config):
     benchmark, learning_curve_kernel = setup_run(config)
     T_max = benchmark.get_max_fidelity()
 
-    runhistory = Runhistory(eta=2)
+    eta = int(config.get("eta", 2))
+    runhistory = Runhistory(eta=eta)
     shared_kwargs = dict(
         benchmark=benchmark,
         prior_kind=prior_kind,
@@ -332,12 +336,12 @@ def run_experiment(config, result_processor, custom_config):
         result_processor=result_processor,
     )
 
-    if  optimizer == "successive_halving":
+    if optimizer == "successive_halving":
         winner_perf, budget_used, num_arms_left, bracket_perfs = prior_guided_successive_halving(
             num_arms=num_arms,
             sampling_seed=seed,
             budget_N=num_arms * np.log2(num_arms),
-            eta=2,
+            eta=eta,
             hb_bracket=None,
             sample_configurations=benchmark.sample,
             **shared_kwargs,
@@ -345,13 +349,13 @@ def run_experiment(config, result_processor, custom_config):
         true_final_means = {0: bracket_perfs}
     elif optimizer == "hyperband":
         winner_perf, budget_used, num_arms_left, true_final_means = prior_guided_hyperband(
-            eta=2,
+            eta=eta,
             sample_configurations=benchmark.sample,
             **shared_kwargs,
         )
     elif optimizer == "priorband":
         winner_perf, budget_used, num_arms_left, true_final_means = prior_guided_hyperband(
-            eta=2,
+            eta=eta,
             sample_configurations=benchmark.prior_band_sampling,
             **shared_kwargs,
         )
