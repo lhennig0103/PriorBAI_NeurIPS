@@ -8,11 +8,9 @@ from collections.abc import Callable
 from typing import Any
 from priorbai.utils import Runhistory
 import numpy as np
-from py_experimenter.experimenter import PyExperimenter
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Kernel
-from utils import Runhistory
 from priorbai.benchmarks import Benchmark, get_benchmark
 from priorbai.kernels import get_kernel
 from priorbai.priors import get_prior_means
@@ -26,6 +24,7 @@ def prior_guided_successive_halving(
         prior_kind: str,
         sampling_seed: int,
         budget_N: int,
+        eta: int,
         kernel: Kernel | None,
         use_predicted_y: bool,
         use_early_stopping: bool,
@@ -36,6 +35,7 @@ def prior_guided_successive_halving(
         seed: int,
         result_processor: Any | None,
         hb_bracket: int | None,
+        runhistory: Runhistory,
         sample_configurations: Callable[..., tuple[list[int], dict[int, float]]],
 ) -> tuple[float, int, int, dict[int, float]]:
 
@@ -48,7 +48,7 @@ def prior_guided_successive_halving(
         raise ValueError("At least one arm is required.")
 
     active_arms = arms.copy()
-    number_of_rounds = math.ceil(math.log2(number_of_arms))
+    number_of_rounds = math.ceil(math.log(number_of_arms, eta))
     mu_hat: dict[int, float] = {arm: prior_means[arm] for arm in arms}
     budget_consumed = 0
     previous_round_budget = 0
@@ -57,7 +57,7 @@ def prior_guided_successive_halving(
     N_stop = 0.0
     round_index = -1
     stopped_early = False
-    C_log = math.log(2.0 * math.log2(number_of_arms) * ((number_of_arms / 2) - 1) / delta)
+    C_log = math.log(2.0 * math.log(number_of_arms, eta) * ((number_of_arms / 2) - 1) / delta)
     logger.debug("C_log=%s", C_log)
 
     for round_index in range(number_of_rounds):
@@ -176,6 +176,7 @@ def prior_guided_successive_halving(
                     "sh_iterations": {
                         "bracket": hb_bracket,
                         "iteration": round_index,
+                        "fidelity": round_budget,
                         "num_arms": len(active_arms),
                         "best_arm_included": 1 if 0 in active_arms else 0,
                         "budget_spent_so_far": budget_consumed,
@@ -197,7 +198,7 @@ def prior_guided_successive_halving(
         else:
             S_r_sorted = sorted(active_arms, key=lambda a: round_y[a], reverse=True)
 
-        number_of_arms_to_keep = math.ceil(len(S_r_sorted) / 2.0) # TODO fix this bug
+        number_of_arms_to_keep = math.ceil(len(S_r_sorted) / eta)
         active_arms = S_r_sorted[:number_of_arms_to_keep]
 
     else:
@@ -233,19 +234,19 @@ def prior_guided_hyperband(
         sample_configurations: Callable[..., tuple[list[int], dict[int, float]]],
 ) -> tuple[float, int, int, dict[int, dict[int, float]]]:
     T_max = benchmark.get_max_fidelity()
-    number_of_halving_rounds = math.floor(math.log(T_max, eta)) if T_max > 1 else 0
-    bracketwise_budget = (number_of_halving_rounds + 1) * T_max
+    s_max = math.floor(math.log(T_max, eta)) if T_max > 1 else 0
+    B = (s_max + 1) * T_max
 
     total_budget = 0
     true_final_means: dict[int, dict[int, float]] = {}
     bracket_winner_perfs: list[float] = []
     seed_sequence = np.random.SeedSequence(seed)
-    for rung, hb_bracket in enumerate(range(number_of_halving_rounds, -1, -1)):
-        num_arms = max(1, math.ceil((number_of_halving_rounds + 1) * eta ** hb_bracket / (hb_bracket + 1)))
+    for rung, s in enumerate(range(s_max, -1, -1)):
+        num_arms = max(1, math.ceil(B / T_max * eta ** s / (s + 1)))
 
         logger.debug(
             "Hyperband bracket s=%d/%d: n_s=%d arms, r_s=%.1f, B=%d",
-            hb_bracket, number_of_halving_rounds, num_arms, T_max / eta ** hb_bracket, bracketwise_budget,
+            s, s_max, num_arms, T_max / eta ** s, B,
         )
 
         sample_configurations_initialised = partial(sample_configurations, rung=rung, eta=eta, runhistory=runhistory)
@@ -255,8 +256,9 @@ def prior_guided_hyperband(
             num_arms=num_arms,
             prior_kind=prior_kind,
             sampling_seed=seed_sequence.spawn(1)[0].generate_state(1, dtype=np.uint32)[0],
-            budget_N=bracketwise_budget,
-            hb_bracket=hb_bracket,
+            budget_N=B,
+            eta=eta,
+            hb_bracket=s,
             kernel=kernel,
             use_predicted_y=use_predicted_y,
             use_early_stopping=use_early_stopping,
@@ -265,14 +267,15 @@ def prior_guided_hyperband(
             sigma0_sq=sigma0_sq,
             rng=rng,
             seed=seed,
+            runhistory=runhistory,
             result_processor=result_processor,
             sample_configurations=sample_configurations_initialised,
         )
         total_budget += budget_used
-        true_final_means[hb_bracket] = bracket_true_final_means
+        true_final_means[s] = bracket_true_final_means
 
         bracket_winner_perfs.append(winner_perf)
-        logger.debug("Bracket s=%d  winner_perf=%.4f", hb_bracket, winner_perf)
+        logger.debug("Bracket s=%d  winner_perf=%.4f", s, winner_perf)
 
     best_winner_perf = max(bracket_winner_perfs)
     return best_winner_perf, total_budget, 1, true_final_means
@@ -334,6 +337,7 @@ def run_experiment(config, result_processor, custom_config):
             num_arms=num_arms,
             sampling_seed=seed,
             budget_N=num_arms * np.log2(num_arms),
+            eta=2,
             hb_bracket=None,
             sample_configurations=benchmark.sample,
             **shared_kwargs,
@@ -367,15 +371,3 @@ def run_experiment(config, result_processor, custom_config):
         "regret": regret,
         "epsilon_optimal": 1 if regret <= epsilon else 0,
     })
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    pyexp = PyExperimenter(
-        experiment_configuration_file_path="conf/experiment_config.yml",
-        database_credential_file_path="conf/database_credentials.yml",
-        use_codecarbon=False,
-    )
-    # pyexp.reset_experiments("running", "error")
-    pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=1, random_order=True)

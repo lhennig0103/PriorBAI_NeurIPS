@@ -6,23 +6,23 @@ PY_EXPERIMENTER:
     database: priorbai_neurips
 
     table:
-      name: test_priorband
+      name: priorband_no_es
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
         optimizer: { type: VARCHAR(64), values: ["priorband"] }
-        num_arms: {type: INT, values: [256]}
+        num_arms: { type: INT, values: [256] }
         benchmark: { type: VARCHAR(255), values: ["lcbench"] }
-        kernel: { type: VARCHAR(255), values: ["linear"]}
-        use_predicted_y: { type: INT, values: [0]}
-        use_early_stopping: { type: INT, values: [0, 1]}
-        seed: {type: INT, values: [0,1,2,3,4]}
-        dataset_id: {type: INT, values: {start: 0, stop: 34}}
-        prior_kind: { type: VARCHAR(255), values: [ "uniform", "rank", "performance", "inverse_rank", "indicator" ]}
+        kernel: { type: VARCHAR(255), values: ["linear"] }
+        use_predicted_y: { type: INT, values: [0] }
+        use_early_stopping: { type: INT, values: [0] }
+        seed: { type: INT, values: [0, 1, 2, 3, 4] }
+        dataset_id: { type: INT, values: { start: 0, stop: 34 } }
+        prior_kind: { type: VARCHAR(255), values: ["uniform"] }
         performance_prior_std: { type: DOUBLE, values: [0.01] }
-        sigma0: { type: DOUBLE, values: [0.01]}
-        epsilon: {type: DOUBLE, values: [0.01]}
-        delta: {type: DOUBLE, values: [0.01,]}
+        sigma0: { type: DOUBLE, values: [0.01] }
+        epsilon: { type: DOUBLE, values: [0.01] }
+        delta: { type: DOUBLE, values: [0.01] }
 
       resultfields:
         T_max: INT
