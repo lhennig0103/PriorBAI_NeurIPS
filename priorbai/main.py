@@ -292,7 +292,7 @@ def setup_run(config):
     seed = int(config["seed"])
     use_priorband = bool(config.get("optimizer") == "priorband")
     
-    benchmark = get_benchmark(benchmark_name, num_arms, dataset_id, seed, priorband=use_priorband, n_prior_construction=1000)
+    benchmark = get_benchmark(benchmark_name, num_arms, dataset_id, seed, priorband=use_priorband, n_prior_construction=1000, n_reference_configs=5000)
     learning_curve_kernel = get_kernel(kernel_name)
 
     return benchmark, learning_curve_kernel
@@ -363,9 +363,9 @@ def run_experiment(config, result_processor, custom_config):
         raise ValueError(f"Unknown optimizer: {optimizer!r}. Choose 'successive_halving' or 'hyperband'.")
 
     all_perfs = [p for bracket in true_final_means.values() for p in bracket.values()]
-    max_true_mean = max(all_perfs)
-    num_epsilon_optimal_arms = sum(1 for p in all_perfs if max_true_mean - p <= epsilon)
-    regret = max_true_mean - winner_perf
+    local_best = max(all_perfs)
+    num_epsilon_optimal_arms = sum(1 for p in all_perfs if local_best - p <= epsilon)
+    regret = benchmark.global_optimum - winner_perf
 
     result_processor.process_results({
         "T_max": T_max,

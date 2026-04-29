@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -t 0:20:00
-#SBATCH --array=1-760%300
+#SBATCH --array=1-680%300
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu 4G
 #SBATCH -J hyperband_no_es

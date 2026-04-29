@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -t 0:20:00
-#SBATCH --array=1-10
+#SBATCH --array=1-3400
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu 4G
 #SBATCH -J priorband_es

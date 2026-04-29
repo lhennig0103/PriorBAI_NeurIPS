@@ -6,7 +6,7 @@ PY_EXPERIMENTER:
     database: priorbai_neurips
 
     table:
-      name: hyperband_no_es
+      name: hyperband_no_es_50000
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }

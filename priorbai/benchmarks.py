@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -38,10 +40,11 @@ class Benchmark(ABC):
 
 
 class SyntheticBenchmark(Benchmark):
-    def __init__(self, max_fidelity: int, seed: int):
+    def __init__(self, max_fidelity: int, seed: int, n_reference_configs: int):
         self.max_fidelity = max_fidelity
         self.true_final_means: dict[int, float] = {}
         self.rng = np.random.default_rng(seed)
+        self.global_optimum = max(self.rng.random() for _ in range(n_reference_configs))
 
     def get_max_fidelity(self) -> int:
         return self.max_fidelity
@@ -63,6 +66,8 @@ class SyntheticBenchmark(Benchmark):
 class LCBenchBenchmark(Benchmark):
     MAX_FIDELITY = 52
 
+    _GLOBAL_OPTIMA_PATH = Path(__file__).parent.parent / "data" / "global_optima.json"
+
     def __init__(self, dataset_id: int, seed: int, priorband: bool, n_prior_construction: int):
         from yahpo_gym import benchmark_set, local_config
 
@@ -73,6 +78,8 @@ class LCBenchBenchmark(Benchmark):
         self.configuration_space = self.benchmarkset.get_opt_space(seed=seed)
         self.priorband = priorband
         self.n_prior_construction = n_prior_construction
+        with open(self._GLOBAL_OPTIMA_PATH) as f:
+            self.global_optimum = json.load(f)[str(dataset_id)]
         if self.priorband:
             self.prior_configspace, self.prior_distribution = self.create_prior_configspace()
 
@@ -284,11 +291,11 @@ class LCBenchBenchmark(Benchmark):
         return np.array(res)
 
 
-def get_benchmark(benchmark_name: str, num_arms: int, dataset_id: int, seed: int, priorband: bool, n_prior_construction: int) -> Benchmark:
+def get_benchmark(benchmark_name: str, num_arms: int, dataset_id: int, seed: int, priorband: bool, n_prior_construction: int, n_reference_configs: int) -> Benchmark:
     if benchmark_name == "synthetic":
         if priorband:
             raise ValueError("PriorBand is not supported for the synthetic benchmark.")
-        return SyntheticBenchmark(max_fidelity=num_arms, seed=seed)
+        return SyntheticBenchmark(max_fidelity=num_arms, seed=seed, n_reference_configs=n_reference_configs)
     elif benchmark_name == "lcbench":
         return LCBenchBenchmark(dataset_id=dataset_id, seed=seed, priorband=priorband, n_prior_construction=n_prior_construction)
     else:
