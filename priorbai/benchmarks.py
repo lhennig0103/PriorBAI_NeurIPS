@@ -40,11 +40,11 @@ class Benchmark(ABC):
 
 
 class SyntheticBenchmark(Benchmark):
-    def __init__(self, max_fidelity: int, seed: int, n_reference_configs: int):
+    def __init__(self, max_fidelity: int, seed: int):
         self.max_fidelity = max_fidelity
         self.true_final_means: dict[int, float] = {}
         self.rng = np.random.default_rng(seed)
-        self.global_optimum = max(self.rng.random() for _ in range(n_reference_configs))
+        self.global_optimum = 1.0
 
     def get_max_fidelity(self) -> int:
         return self.max_fidelity
@@ -141,7 +141,6 @@ class LCBenchBenchmark(Benchmark):
 
 
     def prior_band_sampling(self, num_arms: int, seed: int, rung: int, eta: float, runhistory:Runhistory) -> tuple[list[int], dict[int, float]]:
-        # TODO check whether we need to go through the brackets in which order? This is confusing
         rng = np.random.default_rng(seed)
 
         def activate_incumbent_sampling() -> bool:
@@ -291,11 +290,11 @@ class LCBenchBenchmark(Benchmark):
         return np.array(res)
 
 
-def get_benchmark(benchmark_name: str, num_arms: int, dataset_id: int, seed: int, priorband: bool, n_prior_construction: int, n_reference_configs: int) -> Benchmark:
+def get_benchmark(benchmark_name: str, num_arms: int, dataset_id: int, seed: int, priorband: bool, n_prior_construction: int) -> Benchmark:
     if benchmark_name == "synthetic":
         if priorband:
             raise ValueError("PriorBand is not supported for the synthetic benchmark.")
-        return SyntheticBenchmark(max_fidelity=num_arms, seed=seed, n_reference_configs=n_reference_configs)
+        return SyntheticBenchmark(max_fidelity=num_arms, seed=seed)
     elif benchmark_name == "lcbench":
         return LCBenchBenchmark(dataset_id=dataset_id, seed=seed, priorband=priorband, n_prior_construction=n_prior_construction)
     else:

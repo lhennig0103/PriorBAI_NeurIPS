@@ -8,9 +8,10 @@ from py_experimenter.experimenter import PyExperimenter
 from priorbai.main import run_experiment
 
 _HERE = Path(__file__).parent
-_CREDENTIALS = _HERE.parents[3] / "conf" / "database_credentials.yml"
+_CREDENTIALS = _HERE.parents[4] / "conf" / "database_credentials.yml"
 
 if __name__ == "__main__":
+    # TODO: Reexecute synthetic data experiments with the updated kernel (currently linear, align with no_early_stopping which uses satexp_rbf)
     logging.basicConfig(level=logging.INFO)
     pyexp = PyExperimenter(
         experiment_configuration_file_path=str(_HERE / "config.yml"),

@@ -17,6 +17,6 @@ if __name__ == "__main__":
         database_credential_file_path=str(_CREDENTIALS),
         use_codecarbon=False,
     )
-    pyexp.reset_experiments("running", "error")
+    # pyexp.reset_experiments("running", "error")
     # pyexp.fill_table_from_config()
     pyexp.execute(run_experiment, max_experiments=22, random_order=True)

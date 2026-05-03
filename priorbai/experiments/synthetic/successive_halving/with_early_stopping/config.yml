@@ -6,21 +6,21 @@ PY_EXPERIMENTER:
     database: priorbai_neurips
 
     table:
-      name: new_stopping_hyperband_no_es
+      name: new_stopping_synthetic_es
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
-        optimizer: { type: VARCHAR(64), values: ["hyperband"] }
+        optimizer: { type: VARCHAR(64), values: ["successive_halving"] }
         num_arms: { type: INT, values: [256] }
-        benchmark: { type: VARCHAR(255), values: ["lcbench"] }
+        benchmark: { type: VARCHAR(255), values: ["synthetic"] }
         kernel: { type: VARCHAR(255), values: ["linear"] }
         use_predicted_y: { type: INT, values: [0] }
-        use_early_stopping: { type: INT, values: [0] }
-        seed: { type: INT, values: { start: 0, stop: 20 } }
-        dataset_id: { type: INT, values: { start: 0, stop: 34 } }
-        prior_kind: { type: VARCHAR(255), values: ["uniform"] }
+        use_early_stopping: { type: INT, values: [1] }
+        seed: { type: INT, values: { start: 0, stop: 100 } }
+        dataset_id: { type: INT, values: [0] }
+        prior_kind: { type: VARCHAR(255), values: ["uniform", "rank", "performance", "inverse_rank", "indicator"] }
         performance_prior_std: { type: DOUBLE, values: [0.01] }
-        sigma0: { type: DOUBLE, values: [0.0001] }
+        sigma0: { type: DOUBLE, values: [0.0001, 0.001, 0.01] }
         epsilon: { type: DOUBLE, values: [0.01] }
         delta: { type: DOUBLE, values: [0.01] }
 

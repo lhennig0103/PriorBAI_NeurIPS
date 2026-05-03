@@ -6,7 +6,7 @@ PY_EXPERIMENTER:
     database: priorbai_neurips
 
     table:
-      name: successive_halving_es_50000
+      name: new_stopping_successive_halving_es
 
       keyfields:
         run_id: { type: VARCHAR(64), values: ["__AUTO__"] }
@@ -41,6 +41,12 @@ PY_EXPERIMENTER:
           best_arm_included: INT
           budget_spent_so_far: DOUBLE
           N_stop: DOUBLE
+          std_arm_performances: DOUBLE
+          arm_prediction_variances: TEXT
+          early_stopping_enabled: INT
+          budget_criterion_met: INT
+          gp_criterion_met: INT
+          was_terminated: INT
       brackets:
           bracket: INT
           n_arms: INT

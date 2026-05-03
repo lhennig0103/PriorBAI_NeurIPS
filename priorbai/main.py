@@ -121,6 +121,9 @@ def prior_guided_successive_halving(
 
         logger.debug("round_sigma_sq=%s  Sigma=%.6f", round_sigma_sq, Sigma)
 
+        std_arm_performances = float(np.std(list(round_y.values())))
+        arm_prediction_variances = str([round(round_sigma_sq[arm], 4) for arm in active_arms])
+
         for arm in active_arms:
             runhistory.add(round_budget, benchmark.get_config(arm), round_y[arm])
 
@@ -158,7 +161,7 @@ def prior_guided_successive_halving(
                 base_budget = (4.0 * number_of_rounds * Sigma / (Delta_j_r ** 2)) * C_log
                 budget_reduction = (4.0 * number_of_rounds * Sigma / (Delta_j_r ** 2)) * ((nu_i - nu_j) * Delta_j_r) / (2.0 * sigma0_sq)
                 logger.debug(
-                    "arm=%s  r=%d  number_of_rounds=%d  Sigma=%.6f  Delta=%.6f  bracket=%.6f  N_stop=%.4f  "
+                    "arm=%s  r=%d  number_of_rounds=%d  Sigma=%.6f  Delta=%.6f  bracket=%s  N_stop=%.4f  "
                     "base_budget=%.4f  budget_reduction=%.4f",
                     arm, round_index, number_of_rounds, Sigma, Delta_j_r, hb_bracket, N_stop_j, base_budget, budget_reduction,
                 )
@@ -174,6 +177,16 @@ def prior_guided_successive_halving(
             N_stop = max(N_stop_candidates) if N_stop_candidates else 0.0
             logger.debug("N_used=%d  N_stop=%.4f", budget_consumed, N_stop)
 
+            max_sigma = max(math.sqrt(round_sigma_sq[arm]) for arm in active_arms)
+            gp_uncertainty_bound = math.sqrt(2 * math.log(len(active_arms) / delta)) * max_sigma
+            gp_condition_met = gp_uncertainty_bound <= epsilon / 4
+            budget_criterion_met = budget_consumed >= N_stop
+            terminated = use_early_stopping and budget_criterion_met and gp_condition_met
+            logger.debug(
+                "gp_uncertainty_bound=%.6f  threshold=%.6f  gp_condition_met=%s",
+                gp_uncertainty_bound, epsilon / 4, gp_condition_met,
+            )
+
             if result_processor is not None:
                 result_processor.process_logs({
                     "sh_iterations": {
@@ -184,14 +197,21 @@ def prior_guided_successive_halving(
                         "best_arm_included": 1 if 0 in active_arms else 0,
                         "budget_spent_so_far": budget_consumed,
                         "N_stop": N_stop,
+                        "std_arm_performances": std_arm_performances,
+                        "arm_prediction_variances": arm_prediction_variances,
+                        "early_stopping_enabled": 1 if use_early_stopping else 0,
+                        "budget_criterion_met": 1 if budget_criterion_met else 0,
+                        "gp_criterion_met": 1 if gp_condition_met else 0,
+                        "was_terminated": 1 if terminated else 0,
                     }
                 })
 
-            if use_early_stopping and budget_consumed >= N_stop:
+            if terminated:
                 logger.debug(
                     "Stopping condition reached at round %d/%d with %d arms remaining.",
                     round_index, number_of_rounds, len(active_arms),
                 )
+                stopped_early = True
                 best = i_hat
                 break
 
@@ -292,7 +312,7 @@ def setup_run(config):
     seed = int(config["seed"])
     use_priorband = bool(config.get("optimizer") == "priorband")
     
-    benchmark = get_benchmark(benchmark_name, num_arms, dataset_id, seed, priorband=use_priorband, n_prior_construction=1000, n_reference_configs=5000)
+    benchmark = get_benchmark(benchmark_name, num_arms, dataset_id, seed, priorband=use_priorband, n_prior_construction=1000)
     learning_curve_kernel = get_kernel(kernel_name)
 
     return benchmark, learning_curve_kernel
