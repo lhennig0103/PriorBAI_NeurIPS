@@ -31,6 +31,7 @@ def prior_guided_successive_halving(
         delta: float,
         epsilon: float,
         sigma0_sq: float,
+        tau: float,
         rng: np.random.Generator,
         seed: int,
         result_processor: Any | None,
@@ -178,7 +179,8 @@ def prior_guided_successive_halving(
             logger.debug("N_used=%d  N_stop=%.4f", budget_consumed, N_stop)
 
             max_sigma = max(math.sqrt(round_sigma_sq[arm]) for arm in active_arms)
-            gp_uncertainty_bound = math.sqrt(2 * math.log(len(active_arms) / delta)) * max_sigma
+            beta_tau = 2 * math.log((math.ceil(T_max / tau) + 1) / delta)
+            gp_uncertainty_bound = math.sqrt(beta_tau) * max_sigma
             gp_condition_met = gp_uncertainty_bound <= epsilon / 4
             budget_criterion_met = budget_consumed >= N_stop
             terminated = use_early_stopping and budget_criterion_met and gp_condition_met
@@ -251,6 +253,7 @@ def prior_guided_hyperband(
         delta: float,
         epsilon: float,
         sigma0_sq: float,
+        tau: float,
         rng: np.random.Generator,
         seed: int,
         result_processor: Any | None,
@@ -288,6 +291,7 @@ def prior_guided_hyperband(
             delta=delta,
             epsilon=epsilon,
             sigma0_sq=sigma0_sq,
+            tau=tau,
             rng=rng,
             seed=seed,
             runhistory=runhistory,
@@ -329,6 +333,7 @@ def run_experiment(config, result_processor, custom_config):
     sigma0_sq = sigma0 ** 2
     epsilon = float(config["epsilon"])
     delta = float(config["delta"])
+    tau = float(config.get("tau", 0.1))
     use_predicted_y = bool(config["use_predicted_y"])
     use_early_stopping = bool(config.get("use_early_stopping", False))
 
@@ -350,6 +355,7 @@ def run_experiment(config, result_processor, custom_config):
         delta=delta,
         epsilon=epsilon,
         sigma0_sq=sigma0_sq,
+        tau=tau,
         rng=rng,
         seed=seed,
         runhistory=runhistory,

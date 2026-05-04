@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -t 0:20:00
-#SBATCH --array=1-1500
+#SBATCH --array=1-4500%300
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu 4G
 #SBATCH -J synthetic_es

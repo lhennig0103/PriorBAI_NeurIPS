@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -t 0:20:00
-#SBATCH --array=1-10200%300
+#SBATCH --array=1-3060%300
 #SBATCH --cpus-per-task=2
 #SBATCH --mem-per-cpu 4G
 #SBATCH -J sh_es

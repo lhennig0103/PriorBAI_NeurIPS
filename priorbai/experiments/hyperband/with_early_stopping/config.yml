@@ -23,6 +23,7 @@ PY_EXPERIMENTER:
         sigma0: { type: DOUBLE, values: [0.0001] }
         epsilon: { type: DOUBLE, values: [0.01] }
         delta: { type: DOUBLE, values: [0.01] }
+        tau: { type: DOUBLE, values: [0.1] }
 
       resultfields:
         T_max: INT

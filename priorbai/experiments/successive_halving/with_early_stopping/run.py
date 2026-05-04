@@ -19,4 +19,4 @@ if __name__ == "__main__":
     )
     # pyexp.reset_experiments("running", "error")
     # pyexp.fill_table_from_config()
-    pyexp.execute(run_experiment, max_experiments=14, random_order=True)
+    pyexp.execute(run_experiment, max_experiments=10, random_order=True)
