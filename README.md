@@ -4,7 +4,7 @@
 PriorBAI
 
 - Free software: BSD license
-- Documentation: https://priorbai.readthedocs.io.
+- Documentation: Anonymous
 
 
 ## Features
