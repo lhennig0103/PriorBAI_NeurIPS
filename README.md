@@ -14,7 +14,7 @@ Note that to conduct experiments, you need to setup YahpoGym as described: [yahp
 
 ## Usage
 
-Experiments are executed using the [PyExperimenter](https://github.com/tornede/py_experimenter) library. To run experiments without a mysql database server, make sure that ```provider: mysql``` is set in all config files.
+Experiments are executed using the PyExperimenter library. To run experiments without a mysql database server, make sure that ```provider: mysql``` is set in all config files.
 
 Experiments can then be executed using ``priorbai/priorbai.py``. To run Successive Halving make sure to use `conf/successive_halving.yml` as the experiment configuration file. To use PriorBAI with different priors, use `conf/experiment_config.yml`.
 
